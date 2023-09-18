@@ -1,3 +1,299 @@
+/* ************************** */
+/* ************************** */
+/* ************************** */
+/* music PLAYER */
+const MUTE = "musicPlayer-mute";
+const PLAYING = "musicPlayer-playing";
+const SPEED = "musicPlayer_changeSpeed-show";
+const MUSIC_OPEN = "musicPlayer-open";
+const MUSIC_OPEN_SUBMENU = "musicPlayer-open-subMenu";
+
+class musicPlayer {
+  constructor(container) {
+    this.globalsPlay = document.querySelectorAll(".musicPlayer_global_play");
+    //
+    this.audio = document.getElementById("musicPlayer_audio");
+    this.btn_mute = document.getElementById("musicPlayer_mute");
+    this.playButtons = document.querySelectorAll(".musicPlayer_play");
+    this.btn_forward = document.querySelectorAll(".musicPlayer_forward");
+    this.btn_backward = document.querySelectorAll(".musicPlayer_backward");
+    this.volumeSlider = document.getElementById("musicPlayer_volumeSlider");
+    this.volumeBar = document.getElementById("musicPlayer_volumeBar");
+    this.progressInput = document.getElementById("musicPlayer_progress");
+    this.progresSlider = document.getElementById("musicPlayer_progresSlider");
+    this.currentTime = document.getElementById("musicPlayer_time-current");
+    this.totalTime = document.getElementById("musicPlayer_time-total");
+    this.effectDisc = document.querySelector(".musicPlayer_image");
+    this.songImage = document.getElementById("musicPlayer_image");
+    this.songTitle = document.getElementById("musicPlayer_title");
+    this.songLabel = document.getElementById("musicPlayer_label");
+    this.close = document.getElementById("musicPlayer_close");
+    this.btnSubMenu = document.getElementById("musicPlayer_subMenu");
+
+    this.container = container;
+    this.speedButtons = {};
+
+    Array.from(this.globalsPlay).forEach((btn) =>
+      btn.addEventListener("click", (e) => this.restartAudio(e))
+    );
+    this.audio.addEventListener("loadedmetadata", () => this.loadInitData());
+
+    this.getSeedButtons();
+    this.loadActions();
+  }
+
+  openSubMenu() {
+    console.log("ok");
+    if (
+      window?.innerWidth <= 1023 &&
+      this.container.classList.contains(MUSIC_OPEN)
+    ) {
+      this.container.classList.toggle(MUSIC_OPEN_SUBMENU);
+    }
+
+    if (this.container.classList.contains(MUSIC_OPEN_SUBMENU)) {
+      window?.addEventListener("resize", () => this.closeSubMenuResize());
+    } else {
+      window?.removeEventListener("resize", () => this.closeSubMenuResize());
+    }
+  }
+
+  closeSubMenuResize() {
+    if (window?.innerWidth >= 1023) {
+      this.container.classList.remove(MUSIC_OPEN_SUBMENU);
+    }
+  }
+
+  loadActions() {
+    this.btn_mute?.addEventListener("click", () => this.toggleMute());
+    this.volumeSlider?.addEventListener("input", () => this.setVolume());
+    this.progressInput?.addEventListener("input", () => this.setProgress());
+    this.close.addEventListener("click", () => this.closePlayer());
+    this.btnSubMenu.addEventListener("click", () => this.openSubMenu());
+
+    Array.from(this.btn_forward).forEach((btn) =>
+      btn.addEventListener("click", () => this.seekTime(15))
+    );
+
+    Array.from(this.btn_backward).forEach((btn) =>
+      btn.addEventListener("click", () => this.seekTime(-15))
+    );
+
+    Array.from(this.playButtons).forEach((btn) =>
+      btn.addEventListener("click", () => this.togglePlay())
+    );
+
+    //
+    Array.from(Object.values(this.speedButtons)).forEach((values) => {
+      Array.from(values).forEach((btn) =>
+        btn.addEventListener("click", () => this.changeSpeed(btn))
+      );
+    });
+  }
+
+  loadInitData() {
+    this.audio.currentTime = 0;
+    this.audio.pause();
+
+    this.setVolume();
+    this.printTotalTime();
+    this.togglePlay();
+
+    this.container.classList.add(MUSIC_OPEN);
+  }
+
+  closePlayer() {
+    this.container.classList.remove(MUSIC_OPEN);
+    this.audio.pause();
+
+    this.effectDisc.classList.remove(PLAYING);
+    this.currentButton.classList.remove(PLAYING);
+    this.container.classList.remove(MUSIC_OPEN_SUBMENU);
+    Array.from(this.playButtons).forEach((btn) =>
+      btn.classList.remove(PLAYING)
+    );
+
+    window?.removeEventListener("resize", () => this.closeSubMenuResize());
+
+    this.currentButton = null;
+    this.dataset = null;
+    this.audio.src = "";
+    this.songImage.src = "";
+    this.songTitle.innerHTML = "";
+    this.songLabel.innerHTML = "";
+  }
+
+  toggleMute() {
+    this.isMuted = !this.isMuted;
+    this.audio.muted = this.isMuted;
+    this.btn_mute?.classList.toggle(MUTE);
+  }
+
+  togglePlay() {
+    if (this.audio.paused) {
+      this.audio.play();
+      this.effectDisc.classList.add(PLAYING);
+      this.currentButton.classList.add(PLAYING);
+
+      Array.from(this.playButtons).forEach((btn) => btn.classList.add(PLAYING));
+
+      this.audio.addEventListener("timeupdate", () => this.updateProgress());
+    } else {
+      this.audio.pause();
+      this.effectDisc.classList.remove(PLAYING);
+      this.currentButton.classList.remove(PLAYING);
+
+      Array.from(this.playButtons).forEach((btn) =>
+        btn.classList.remove(PLAYING)
+      );
+
+      this.audio.removeEventListener("timeupdate", () => this.updateProgress());
+    }
+  }
+
+  getSeedButtons() {
+    const speedButtons = document.querySelectorAll(".musicPlayer_changeSpeed");
+
+    speedButtons.forEach((element) => {
+      const dataSpeed = element.getAttribute("data-speed");
+
+      if (!this.speedButtons[dataSpeed]) {
+        this.speedButtons[dataSpeed] = [];
+      }
+
+      this.speedButtons[dataSpeed].push(element);
+    });
+  }
+
+  setVolume() {
+    this.volume = parseFloat(this.volumeSlider.value);
+    this.audio.volume = this.volume;
+    this.volumeBar.style.width = `${this.volume * 100}%`;
+    this.setMute();
+  }
+
+  setMute(isMuted = false) {
+    this.audio.muted = isMuted;
+    this.isMuted = isMuted;
+
+    if (isMuted) {
+      this.btn_mute?.classList.add(MUTE, isMuted);
+    } else {
+      this.btn_mute?.classList.remove(MUTE, isMuted);
+    }
+  }
+
+  seekTime(seconds) {
+    this.audio.currentTime += seconds;
+  }
+
+  updateProgress() {
+    const currentTime = this.audio.currentTime;
+    const duration = this.audio.duration;
+
+    if (!isNaN(duration)) {
+      const percent = currentTime / duration;
+      this.progressInput.value = percent;
+      this.progresSlider.style.width = `${percent * 100}%`;
+      this.printCurrentTime();
+    }
+  }
+
+  setProgress() {
+    const percent = this.progressInput.value;
+    const duration = this.audio.duration;
+
+    if (!isNaN(duration)) {
+      const newPosition = percent * duration;
+      this.audio.currentTime = newPosition;
+      this.progresSlider.style.width = `${percent * 100}%`;
+    }
+  }
+
+  getTimeInMinutes(seconds) {
+    const totalMinutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    const formattedTime = `${totalMinutes
+      .toString()
+      .padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+    return formattedTime;
+  }
+
+  getTotalTimeFormatted() {
+    const duration = this.audio.duration;
+    if (!isNaN(duration)) {
+      return this.getTimeInMinutes(duration);
+    }
+    return "00:00";
+  }
+
+  getCurrentTimeFormatted() {
+    const currentTime = this.audio.currentTime;
+    return this.getTimeInMinutes(currentTime);
+  }
+
+  printCurrentTime() {
+    const currentTime = this.getCurrentTimeFormatted();
+    this.currentTime.innerHTML = currentTime;
+  }
+
+  printTotalTime() {
+    const totalTime = this.getTotalTimeFormatted();
+    this.totalTime.innerHTML = totalTime;
+  }
+
+  changeSpeed(btn) {
+    const speed = btn.dataset.speed;
+    this.audio.playbackRate = parseFloat(speed);
+    this.hideAllChangeSpeed();
+
+    switch (speed) {
+      case "1.5":
+        Array.from(this.speedButtons["2.0"]).forEach((btn) =>
+          btn.classList.add(SPEED)
+        );
+        break;
+
+      case "2.0":
+        Array.from(this.speedButtons["1.0"]).forEach((btn) =>
+          btn.classList.add(SPEED)
+        );
+        break;
+
+      case "1.0":
+        Array.from(this.speedButtons["1.5"]).forEach((btn) =>
+          btn.classList.add(SPEED)
+        );
+        break;
+    }
+  }
+
+  hideAllChangeSpeed() {
+    Array.from(Object.values(this.speedButtons)).forEach((values) => {
+      Array.from(values).forEach((btn) => btn.classList.remove(SPEED));
+    });
+  }
+
+  restartAudio(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.currentButton?.classList.remove(PLAYING);
+
+    this.currentButton = event?.currentTarget;
+    this.dataset = this.currentButton?.dataset;
+    this.audio.src = this.dataset?.musicSrc;
+    this.songImage.src = this.dataset?.musicImg;
+    this.songTitle.innerHTML = this.dataset?.musicTitle;
+    this.songLabel.innerHTML = this.dataset?.musicLabel;
+  }
+}
+
+/* music PLAYER */
+/* ************************** */
+/* ************************** */
+/* ************************** */
+
 function main() {
   /* ************************** */
   /* ************************** */
@@ -88,6 +384,8 @@ function main() {
   function closeUserMenu(event) {
     const menu = document.getElementById("user_menu");
 
+    console.log(!menu.contains(event.target) &&
+    !headerUserIcon.contains(event.target))
     if (
       !menu.contains(event.target) &&
       !headerUserIcon.contains(event.target)
@@ -119,9 +417,6 @@ function main() {
   const notifications = document.getElementById("user_notifications");
 
   function hideNotifications(event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-
     if (
       !notifications.contains(event.target) &&
       !btnNotifications.contains(event.target)
@@ -133,19 +428,13 @@ function main() {
   }
 
   function hideNotificationsAction(event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-
-    if (window?.innerWidth <= 639) {
+     if (window?.innerWidth <= 639) {
       notifications.classList.remove(OPEN_NOTIFICATIONS);
       document.removeEventListener("click", closeUserMenu);
     }
   }
 
   function showNotifications(event) {
-    event?.preventDefault();
-    event?.stopPropagation();
-
     notifications?.classList?.toggle(OPEN_NOTIFICATIONS);
     document.addEventListener("click", hideNotifications);
     window.addEventListener("resize", hideNotificationsAction);
@@ -269,6 +558,171 @@ function main() {
 
   menuMoreBtn?.addEventListener("click", showMore);
   /* ACTIONS */
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+  /* TRENDING TOPICS */
+  const trendingToìcSlider = document.querySelector(".trendingTopics_slider");
+
+  if (trendingToìcSlider) {
+    const slider = new Splide(trendingToìcSlider, {
+      arrowPath:
+        "M16.28 11.47a.75.75 0 010 1.06l-7.5 7.5a.75.75 0 01-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 011.06-1.06l7.5 7.5z",
+      classes: {
+        arrow: "splide__arrow trendingTopics-arrow",
+        prev: "splide__arrow--prev trendingTopics-prev",
+        next: "splide__arrow--next trendingTopics-next",
+      },
+      perPage: 5,
+      perMove: 1,
+      pagination: false,
+      breakpoints: {
+        1279: {
+          perPage: 4,
+        },
+        1024: {
+          perPage: 3,
+        },
+        499: {
+          perPage: 2,
+        },
+        320: {
+          perPage: 1,
+        },
+      },
+    });
+
+    slider.mount();
+  }
+  /* TRENDING TOPICS */
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+  /* music PLAYER */
+  const music = document.getElementById("musicPlayer");
+
+  if (music) {
+    new musicPlayer(music);
+  }
+  /* music PLAYER */
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+  /* EFFECTS */
+  const likeButtons = document.querySelectorAll(".like_action");
+
+  Array.from(likeButtons).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      btn.classList.toggle("like_active");
+    });
+  });
+  /* EFFECTS */
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+
+
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+  /* GRID VIDEOS */
+  const SHOW_IFRAME = "video_iframe-visible";
+
+  const videos = document.querySelectorAll(".videos_item_image");
+
+  function iframeVideo(url) {
+    return `<div class="video_iframe">
+      <iframe
+        width="560"
+        height="315"
+        src="${url}"
+        title="YouTube video player"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+      ></iframe>
+    </div>
+    ` ;
+  }
+
+  function showIframe(container, iframe) {
+    container?.classList.add(SHOW_IFRAME)
+    iframe?.removeEventListener("load", showIframe);
+  }
+
+  function loadIframe(video) {
+    const container = video?.querySelector(".video_iframe");
+    const iframe = container?.querySelector("iframe");
+
+    iframe?.addEventListener("load", () => showIframe(container, iframe));
+  }
+
+  function focusVideo(video) {
+    const exist = video?.querySelector(".video_iframe");
+
+    if (exist) {
+      exist.remove();
+    }
+
+    const iframe = iframeVideo(video?.dataset?.url) ?? null;
+
+    video?.insertAdjacentHTML('beforeend', iframe);
+    loadIframe(video);
+  }
+
+  function leaveVideo(video) {
+    const iframe = video?.querySelector(".video_iframe");
+
+    if (iframe) {
+      video?.removeChild(iframe)
+    }
+  }
+
+  Array.from(videos).forEach((video) => {
+    video.addEventListener("mouseenter", () => focusVideo(video));
+    video.addEventListener("mouseleave", () => leaveVideo(video));
+  })
+  /* GRID VIDEOS */
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+
+  /* ************************** */
+  /* ************************** */
+  /* ************************** */
+  /* CHANGE THEME */
+  const themeButtons = document.querySelectorAll(".change_theme");
+
+  function changeTheme(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const body = document.body;
+    const current = body.getAttribute("data-theme");
+
+    if (current) {
+      body.setAttribute("data-theme", "");
+    } else {
+      body.setAttribute("data-theme", "dark");
+    }
+  }
+
+  Array.from(themeButtons).forEach((button) => {
+    button.addEventListener("click", changeTheme)
+  })
+  /* CHANGE THEME */
   /* ************************** */
   /* ************************** */
   /* ************************** */
